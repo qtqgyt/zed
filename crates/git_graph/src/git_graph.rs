@@ -21,7 +21,7 @@ use gpui::{
 use language::line_diff;
 use menu::{Cancel, SelectFirst, SelectLast, SelectNext, SelectPrevious};
 use project::{
-    ProjectPath, TaskSourceKind, WorktreeId,
+    GIT_COMMAND_TASK_TAG, ProjectPath, TaskSourceKind, WorktreeId,
     git_store::{
         CommitDataState, GitGraphEvent, GitStore, GitStoreEvent, GraphDataResponse, Repository,
         RepositoryEvent, RepositoryId,
@@ -63,7 +63,6 @@ const LEFT_PADDING: Pixels = px(12.0);
 const LINE_WIDTH: Pixels = px(1.5);
 const RESIZE_HANDLE_WIDTH: f32 = 8.0;
 const COPIED_STATE_DURATION: Duration = Duration::from_secs(2);
-const GIT_COMMAND_TASK_TAG: &str = "git-command";
 // Extra vertical breathing room added to the UI line height when computing
 // the git graph's row height, so commit dots and lines have space around them.
 const ROW_VERTICAL_PADDING: Pixels = px(4.0);
@@ -1963,17 +1962,11 @@ impl GitGraph {
             return Vec::new();
         };
 
-        task_inventory
-            .read(cx)
-            .templates_with_tag(GIT_COMMAND_TASK_TAG, worktree_id)
-            .into_iter()
-            .filter_map(|(task_source_kind, task_template)| {
-                let id_base = task_source_kind.to_id_base();
-                task_template
-                    .resolve_task(&id_base, task_context)
-                    .map(|resolved_task| (task_source_kind, resolved_task))
-            })
-            .collect()
+        task_inventory.read(cx).resolved_tasks_with_tag(
+            GIT_COMMAND_TASK_TAG,
+            worktree_id,
+            task_context,
+        )
     }
 
     fn schedule_git_task(
@@ -3880,7 +3873,7 @@ mod tests {
     }
 
     #[gpui::test]
-    async fn test_git_context_menu_tasks_resolve_custom_git_command_tag(cx: &mut TestAppContext) {
+    async fn test_git_context_menu_tasks_resolve_git_command_tag(cx: &mut TestAppContext) {
         init_test(cx);
 
         let fs = FakeFs::new(cx.executor());
@@ -3918,7 +3911,7 @@ mod tests {
                                 "label": "Global $ZED_GIT_SHA_SHORT",
                                 "command": "git",
                                 "args": ["show", "$ZED_GIT_SHA"],
-                                "tags": ["custom-git-command"],
+                                "tags": [GIT_COMMAND_TASK_TAG],
                             },
                             {
                                 "label": "Global untagged",
